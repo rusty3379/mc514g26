@@ -1,0 +1,21 @@
+== Divisão de tarefas ==
+
+*Funções do arquivo ThreadCB.java a serem feitas:*
+
+- public ThreadCB() > *undefined*
+
+- public static void init() > *undefined*
+
+- static public ThreadCB do_create(TaskCB task) > *undefined*
+
+- public void do_kill() > *undefined*
+
+- public void do_suspend(Event event) > *undefined*
+
+- public void do_resume() > undefined
+
+- public static int do_dispatch() > *undefined*
+
+- public static void atError() > *undefined*
+
+- public static void atWarning() > *undefined*
