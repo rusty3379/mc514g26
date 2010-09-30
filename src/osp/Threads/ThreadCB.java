@@ -15,6 +15,9 @@ package osp.Threads;
 import java.util.ArrayList;
 import java.util.Vector;
 import java.util.Enumeration;
+
+import javax.xml.crypto.dsig.spec.HMACParameterSpec;
+
 import osp.Utilities.*;
 import osp.IFLModules.*;
 import osp.Tasks.*;
@@ -34,6 +37,7 @@ public class ThreadCB extends IflThreadCB
 {
 	static ArrayList<ThreadCB> readyQueue = new ArrayList<ThreadCB>();
 	static ArrayList<ThreadCB> waitingQueue = new ArrayList<ThreadCB>();
+	static int t;
     /**
        The thread constructor. Must call 
 
@@ -101,8 +105,9 @@ public class ThreadCB extends IflThreadCB
 		newThread.setStatus(ThreadReady);	
 		
 		readyQueue.add(newThread);			/*OK, na ready queue*/
+
 		
-		
+		dispatch();
 		return newThread;
     }
 
@@ -147,16 +152,24 @@ public class ThreadCB extends IflThreadCB
     	 * Caso o status anterior era waiting, soma mais 1
     	 */
         if (this.getStatus() == ThreadRunning){
-        	this.setStatus(ThreadWaiting);
+        	this.setStatus(ThreadWaiting);        	
+        	/*Liberar a Thread da CPU*/
+        	MMU.getPTBR().getTask().setCurrentThread(null);        	
+        	MMU.setPTBR(null);
         }
         else{
         	this.setStatus(this.getStatus()+1);   	
         }
         
-        /*adicionar a Thread a fila de eventos*/
-        event.addThread(this);        
-        
         waitingQueue.add(this);
+        readyQueue.remove(this);
+        
+        /*adicionar a Thread a fila de eventos*/
+        event.addThread(this);
+        
+        
+
+      dispatch();
 
     }
 
@@ -171,8 +184,7 @@ public class ThreadCB extends IflThreadCB
     */
     public void do_resume()
     {
-        // your code goes here
-
+    		//code
     }
 
     /** 
@@ -189,9 +201,42 @@ public class ThreadCB extends IflThreadCB
         @OSPProject Threads
     */
     public static int do_dispatch()
-    {
-		return MaxThreadsPerTask;
-        // your code goes here
+    {   
+    	int status=0;
+    	
+    	/*caso readyQueue vazia retornar failure*/
+    	if(readyQueue.size() == 0){
+    		return FAILURE;
+    	}
+    	
+    	t=(t+1)%readyQueue.size();
+    	
+    	/*receber status*/
+    	if(MMU.getPTBR()!=null){
+    		
+    		status=MMU.getPTBR().getTask().getCurrentThread().getStatus();
+    	
+    		/*modificar status*/
+    		MMU.getPTBR().getTask().getCurrentThread().setStatus(status);
+    	
+    		/*modificar a Thread corrente para null*/
+    		MMU.getPTBR().getTask().setCurrentThread(null);
+    	
+    		/*modificar o PTBR para null*/
+    		MMU.setPTBR(null);
+    	}
+    	
+    	readyQueue.get(t).setStatus(ThreadRunning);
+    	
+    	MMU.setPTBR(readyQueue.get(t).getTask().getPageTable());
+    	
+    	readyQueue.get(t).getTask().setCurrentThread(readyQueue.get(t));
+    	
+    	readyQueue.remove(t);
+    			
+
+    	
+    	return SUCCESS;        
 
     }
 
