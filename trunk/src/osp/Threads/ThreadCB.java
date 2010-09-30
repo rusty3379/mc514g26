@@ -33,6 +33,7 @@ import osp.Resources.*;
 public class ThreadCB extends IflThreadCB 
 {
 	static ArrayList<ThreadCB> readyQueue = new ArrayList<ThreadCB>();
+	static ArrayList<ThreadCB> waitingQueue = new ArrayList<ThreadCB>();
     /**
        The thread constructor. Must call 
 
@@ -42,7 +43,7 @@ public class ThreadCB extends IflThreadCB
 
        @OSPProject Threads
     */
-	int i,j;//contadores
+	
 	
     public ThreadCB()
     {
@@ -99,7 +100,7 @@ public class ThreadCB extends IflThreadCB
 		
 		newThread.setStatus(ThreadReady);	
 		
-		readyQueue.add(newThread);			/*OK, na ready queue*/			
+		readyQueue.add(newThread);			/*OK, na ready queue*/
 		
 		
 		return newThread;
@@ -142,7 +143,20 @@ public class ThreadCB extends IflThreadCB
     */
     public void do_suspend(Event event)
     {
-        // your code goes here
+    	/*Verificar se o status anterior era Running e mudar para Waiting
+    	 * Caso o status anterior era waiting, soma mais 1
+    	 */
+        if (this.getStatus() == ThreadRunning){
+        	this.setStatus(ThreadWaiting);
+        }
+        else{
+        	this.setStatus(this.getStatus()+1);   	
+        }
+        
+        /*adicionar a Thread a fila de eventos*/
+        event.addThread(this);        
+        
+        waitingQueue.add(this);
 
     }
 
