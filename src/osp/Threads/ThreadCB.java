@@ -12,6 +12,7 @@
 *
 * */ 
 package osp.Threads;
+import java.util.ArrayList;
 import java.util.Vector;
 import java.util.Enumeration;
 import osp.Utilities.*;
@@ -31,6 +32,7 @@ import osp.Resources.*;
 */
 public class ThreadCB extends IflThreadCB 
 {
+	static ArrayList<ThreadCB> readyQueue = new ArrayList<ThreadCB>();
     /**
        The thread constructor. Must call 
 
@@ -44,8 +46,7 @@ public class ThreadCB extends IflThreadCB
 	
     public ThreadCB()
     {
-        // your code goes here
-    	super();
+      	super(); //Construtor
     }
 
     /**
@@ -79,9 +80,29 @@ public class ThreadCB extends IflThreadCB
     */
     static public ThreadCB do_create(TaskCB task)
     {
-		return null;
-        // your code goes here
-
+    	/*Criacao do objeto thread*/
+		ThreadCB newThread = new ThreadCB();
+        
+		/*Verificar se pode adicionar a Thread na Task*/
+		if (task.getThreadCount() >= ThreadCB.MaxThreadsPerTask){
+        	return null;
+        }
+		
+		/*Adicionar na task*/
+		if (task.addThread(newThread) == FAILURE){
+			return null;			
+		}
+		
+		newThread.setTask(task);			/*Thread pertence a Task*/
+			
+		newThread.setPriority(0); 			/*sem prioridade no projeto*/
+		
+		newThread.setStatus(ThreadReady);	
+		
+		readyQueue.add(newThread);			/*OK, na ready queue*/			
+		
+		
+		return newThread;
     }
 
     /** 
