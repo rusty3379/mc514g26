@@ -1,54 +1,27 @@
 package osp.Memory;
-/**
-    The PageTable class represents the page table for a given task.
-    A PageTable consists of an array of PageTableEntry objects.  This
-    page table is of the non-inverted type.
 
-    @OSPProject Memory
-*/
-import java.lang.Math;
 import osp.Tasks.*;
-import osp.Utilities.*;
 import osp.IFLModules.*;
-import osp.Hardware.*;
 
-public class PageTable extends IflPageTable
-{
-    /** 
-	The page table constructor. Must call
-	
-	    super(ownerTask)
+public class PageTable extends IflPageTable {
 
-	as its first statement.
+	public PageTable(TaskCB ownerTask) {
+		super(ownerTask);
+		
+		int maxPages = (int)Math.pow(2, MMU.getPageAddressBits()); // Máximo de páginas
+		pages = new PageTableEntry[maxPages]; // Vetor de páginas
+		for (int i = 0; i < pages.length; i++) {
+			pages[i] = new PageTableEntry(this, i);
+		}
+	}
 
-	@OSPProject Memory
-    */
-    public PageTable(TaskCB ownerTask)
-    {
-    	super(ownerTask);
-        // your code goes here
-
-    }
-
-    /**
-       Frees up main memory occupied by the task.
-       Then unreserves the freed pages, if necessary.
-
-       @OSPProject Memory
-    */
-    public void do_deallocateMemory()
-    {
-        // your code goes here
-
-    }
-
-
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
-
+	public void do_deallocateMemory() {
+		for (int i = 0; i < pages.length; i++) {
+			if (pages[i].getFrame() != null) {
+				pages[i].getFrame().setDirty(false);
+				pages[i].getFrame().setReferenced(false);
+				pages[i].getFrame().setPage(null);
+			}
+		}
+	}
 }
-
-/*
-      Feel free to add local classes to improve the readability of your code
-*/
