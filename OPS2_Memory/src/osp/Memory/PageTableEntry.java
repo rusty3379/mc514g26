@@ -6,72 +6,43 @@ import osp.Threads.*;
 import osp.Devices.*;
 import osp.Utilities.*;
 import osp.IFLModules.*;
-/**
-   The PageTableEntry object contains information about a specific virtual
-   page in memory, including the page frame in which it resides.
-   
-   @OSPProject Memory
 
-*/
+public class PageTableEntry extends IflPageTableEntry {
 
-public class PageTableEntry extends IflPageTableEntry
-{
-    /**
-       The constructor. Must call
+	public PageTableEntry(PageTable ownerPageTable, int pageNumber) {
+		super(ownerPageTable,pageNumber);
+	}
 
-       	   super(ownerPageTable,pageNumber);
-	   
-       as its first statement.
+	public int do_lock(IORB iorb) {
+		ThreadCB thread = iorb.getThread();
+		
+		if (isValid()) { // Se a página está na memória
+			getFrame().incrementLockCount();
+			return SUCCESS;
+		}
+		else { // Se a página não está na memória > PageFault
+			if (getValidatingThread() == null) { // Se a página não estava em PageFault
+				int i = PageFaultHandler.handlePageFault(thread, MemoryLock, this);
+				if (i == FAILURE) {
+					return FAILURE;
+				}
+				else {
+					getFrame().incrementLockCount();
+					return SUCCESS;
+				}
+			}
+			else if (getValidatingThread() == thread) { // PageFault da mesma thread
+				getFrame().incrementLockCount();
+				return SUCCESS;
+			}
+			else { // PageFault de outra thread
+				thread.suspend(this);
+				return FAILURE;
+			}
+		}
+	}
 
-       @OSPProject Memory
-    */
-    public PageTableEntry(PageTable ownerPageTable, int pageNumber)
-    {
-    	super(ownerPageTable,pageNumber);
-        // your code goes here
-
-    }
-
-    /**
-       This method increases the lock count on the page by one. 
-
-	The method must FIRST increment lockCount, THEN  
-	check if the page is valid, and if it is not and no 
-	page validation event is present for the page, start page fault 
-	by calling PageFaultHandler.handlePageFault().
-
-	@return SUCCESS or FAILURE
-	FAILURE happens when the pagefault due to locking fails or the 
-	that created the IORB thread gets killed.
-
-	@OSPProject Memory
-     */
-    public int do_lock(IORB iorb)
-    {
-		return 0;
-        // your code goes here
-
-    }
-
-    /** This method decreases the lock count on the page by one. 
-
-	This method must decrement lockCount, but not below zero.
-
-	@OSPProject Memory
-    */
-    public void do_unlock()
-    {
-        // your code goes here
-
-    }
-
-
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
-
+	public void do_unlock() {
+		getFrame().decrementLockCount();
+	}
 }
-
-/*
-      Feel free to add local classes to improve the readability of your code
-*/
