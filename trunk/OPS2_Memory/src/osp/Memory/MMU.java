@@ -25,7 +25,10 @@ public class MMU extends IflMMU
     */
     public static void init()
     {
-        // your code goes here
+    	
+		for (int i = 0; i < MMU.getFrameTableSize(); i++) {
+			MMU.setFrame(i, new FrameTableEntry(i)); /*inicializacao das frames*/
+		}
 
     }
 
@@ -51,9 +54,38 @@ public class MMU extends IflMMU
     static public PageTableEntry do_refer(int memoryAddress,
 					  int referenceType, ThreadCB thread)
     {
-		return null;
-        // your code goes here
-
+    	int maxAdressedSpace=getVirtualAddressBits(), sizeofPage=getPageAddressBits();
+    	
+    	int memoryPage = memoryAddress >>> (maxAdressedSpace - sizeofPage);
+    	
+    	PageTable runningTask = getPTBR();
+    	
+    	if (memoryPage >= runningTask.pages.length){ 
+    		return null;   		  		   		
+    	}
+    	
+    	
+    	PageTableEntry page = runningTask.pages[memoryPage];
+    	
+    	if (page.isValid()){
+    		if(thread.getStatus() != ThreadKill){
+    			page.getFrame().setReferenced(true);
+    			if (referenceType == MemoryWrite) page.getFrame().setDirty(true);    			
+    		}    		
+    	}
+    	else{
+    		if(page.getValidatingThread() != null)thread.suspend(page);
+    		else{
+    			InterruptVector.setPage(page);
+    			InterruptVector.setThread(thread);
+    			InterruptVector.setReferenceType(referenceType);
+    			CPU.interrupt(GlobalVariables.PageFault);
+    		}
+    	}
+    	
+    	return page;	
+    	
+    	
     }
 
     /** Called by OSP after printing an error message. The student can
