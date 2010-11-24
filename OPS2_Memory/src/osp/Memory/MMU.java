@@ -54,9 +54,8 @@ public class MMU extends IflMMU
     static public PageTableEntry do_refer(int memoryAddress,
 					  int referenceType, ThreadCB thread)
     {
-    	int maxAdressedSpace=getVirtualAddressBits(), sizeofPage=getPageAddressBits();
     	
-    	int memoryPage = memoryAddress >>> (maxAdressedSpace - sizeofPage);
+    	int memoryPage = memoryAddress >>> (getVirtualAddressBits() - getPageAddressBits());
     	
     	PageTable runningTask = getPTBR();
     	
@@ -68,10 +67,6 @@ public class MMU extends IflMMU
     	PageTableEntry page = runningTask.pages[memoryPage];
     	
     	if (page.isValid()){
-    		if(thread.getStatus() != ThreadKill){
-    			page.getFrame().setReferenced(true);
-    			if (referenceType == MemoryWrite) page.getFrame().setDirty(true);    			
-    		}    		
     	}
     	else{
     		if(page.getValidatingThread() != null)thread.suspend(page);
@@ -82,6 +77,11 @@ public class MMU extends IflMMU
     			CPU.interrupt(GlobalVariables.PageFault);
     		}
     	}
+    	
+  		if(thread.getStatus() != ThreadKill){
+			page.getFrame().setReferenced(true);
+			if (referenceType == MemoryWrite) page.getFrame().setDirty(true);    			
+		}    		
     	
     	return page;	
     	
