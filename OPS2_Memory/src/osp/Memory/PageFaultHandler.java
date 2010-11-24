@@ -76,6 +76,10 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 int referenceType,
 					 PageTableEntry page)
     {
+		if (page.isValid()){			
+			return FAILURE;
+		}
+		
 		return referenceType;
         // your code goes here
 
