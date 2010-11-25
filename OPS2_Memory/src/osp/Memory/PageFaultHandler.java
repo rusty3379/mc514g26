@@ -80,18 +80,146 @@ public class PageFaultHandler extends IflPageFaultHandler
 			return FAILURE;
 		}
 		
-		return referenceType;
-        // your code goes here
+		SystemEvent pfEvent = new SystemEvent(userOption);
 
+		thread.suspend(pfEvent); /*Suspend the thread that caused the interrupt*/
+
+		FrameTableEntry freeFrame = null;
+		FrameTableEntry notDirtyFrame = null;
+		FrameTableEntry victmFrame = null;
+
+		FrameTableEntry frameofWork = null;
+		
+		int i=1;
+		
+		while (i < MMU.getFrameTableSize()){ /* encontrar um frame livre */
+				
+			FrameTableEntry frame = MMU.getFrame(i);
+			
+			if (frame.getReserved() == null && frame.getLockCount() == 0) {
+							
+				if (frame.getPage() == null) {
+					if(freeFrame == null && frame != null){
+						freeFrame = frame;
+						break;
+					}
+				}				
+				else {
+					if (!frame.isDirty()) {
+						if(notDirtyFrame == null){
+							notDirtyFrame = frame;						
+						}
+					} 
+					else {
+						if(victmFrame == null){
+							victmFrame = frame;
+						}
+
+					}
+				}
+			}
+			
+			i++;
+		}
+		
+
+		frameofWork = freeFrame;
+		
+		if(freeFrame != null){
+			frameofWork = freeFrame;
+		}
+		else{		
+			
+			if(notDirtyFrame != null){
+				frameofWork= notDirtyFrame;
+			}
+			else{				
+				frameofWork = victmFrame;
+			}
+		}
+		
+		
+		if(frameofWork == null){/* Caso não tenha frames disponíveis */
+			
+			page.notifyThreads();
+			pfEvent.notifyThreads();
+			ThreadCB.dispatch();
+			return GlobalVariables.NotEnoughMemory;			
+		}
+		
+		else
+		{
+						
+			frameofWork.setReserved(thread.getTask());
+					
+			page.setValidatingThread(thread);
+			
+			PageTableEntry paginaRetirada = frameofWork.getPage();
+			
+			if (paginaRetirada != null) {
+
+				if (frameofWork.isDirty()) {
+					
+					/*swap in*/
+					TaskCB task = thread.getTask();
+					PageTableEntry pagina = frameofWork.getPage();
+					task.getSwapFile().write(pagina.getID(), pagina, thread);
+					
+					
+					if (thread.getStatus() == GlobalVariables.ThreadKill) {/*devido a demora no write*/						
+						page.notifyThreads();
+						page.setValidatingThread(null);
+						pfEvent.notifyThreads();
+						ThreadCB.dispatch();						
+						return GlobalVariables.FAILURE; 
+					}
+					
+					frameofWork.setDirty(false);
+				}
+				
+				frameofWork.setReferenced(false);
+				
+				paginaRetirada.setValid(false);
+				paginaRetirada.setFrame(null);
+				
+			//	if (paginaRetirada.getTask().getStatus() != TaskTerm) {
+				//	frameofWork.setPage(null);
+				//	}
+				
+			}
+
+			page.setFrame(frameofWork);
+			
+			TaskCB task = thread.getTask();
+			task.getSwapFile().read(page.getID(), page, thread);
+
+			if (thread.getStatus() == GlobalVariables.ThreadKill) { /*devido a demora no read*/
+				//if ((frameofWork.getPage() != null)	&& (frameofWork.getPage().getTask() == thread.getTask())) {
+				frameofWork.setPage(null);
+				//}
+				page.notifyThreads();
+				page.setValidatingThread(null);
+				page.setFrame(null);
+				pfEvent.notifyThreads();
+				ThreadCB.dispatch();
+				
+				return FAILURE;
+			}
+
+			frameofWork.setPage(page);
+			page.setValid(true);
+			
+			page.setValidatingThread(null);
+			//		if (frameofWork.getReserved() == page.getTask()) {
+			frameofWork.setUnreserved(page.getTask());
+		//	}
+			page.notifyThreads();
+			pfEvent.notifyThreads();
+			ThreadCB.dispatch();
+
+			return SUCCESS;
+		} 
     }
-
-
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
 
 }
 
-/*
-      Feel free to add local classes to improve the readability of your code
-*/
