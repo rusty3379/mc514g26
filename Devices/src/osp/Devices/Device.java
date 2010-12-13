@@ -19,6 +19,9 @@ import java.util.*;
 
 public class Device extends IflDevice
 {
+	
+	static GenericList iorbQueue;
+
     /**
         This constructor initializes a device with the provided parameters.
 	As a first statement it must have the following:
@@ -44,7 +47,8 @@ public class Device extends IflDevice
     */
     public static void init()
     {
-        // your code goes here
+    	iorbQueue = new GenericList();
+
 
     }
 
@@ -67,9 +71,32 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
-		return 0;
-        // your code goes here
-
+    	//int memoryPage = MMU.memoryAddress >>> (MMU.getVirtualAddressBits() - MMU.getPageAddressBits());
+    	
+    	
+    	iorb.getPage().lock(iorb);/*lock the page associated with the iorb*/
+    	
+    	/*increment the IORB count of the open-file handle associated with iorb.*/
+    	iorb.getOpenFile().incrementIORBCount();
+    	
+    	iorb.setCylinder(iorb.getBlockNumber());/*Not sure*/
+    	
+    	if (iorb.getThread().getStatus() == ThreadKill){
+    		return FAILURE;
+    	}
+    	
+    	/*Se não estiver ocupado inicializa o IO*/
+    	if(!(Device.get(iorb.getDeviceID()).isBusy())){
+    		startIO(iorb);
+    		return SUCCESS;
+    	}
+    		
+    	else{
+    	//if((Device.get(iorb.getDeviceID()).isBusy())){    	   	
+    		iorbQueue.append(iorb);
+    		return SUCCESS;
+    	//}
+    	}
     }
 
     /**
@@ -80,8 +107,14 @@ public class Device extends IflDevice
     */
     public IORB do_dequeueIORB()
     {
-		return null;
-        // your code goes here
+    	
+    	
+//		if(!(iorbQueue.isEmpty())){
+			
+			
+			return  (IORB) iorbQueue.removeHead();		
+		
+	
 
     }
 
@@ -100,7 +133,24 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-        // your code goes here
+    	
+    	
+    	while(iorbQueue.forwardIterator().hasMoreElements()){
+    		if (((IORB) iorbQueue.forwardIterator().nextElement()).getThread() == thread){
+    			/*liberar o buffer*/
+    			((IORB) iorbQueue.forwardIterator().nextElement()).getPage().unlock();
+    			/*Decrementar o contador*/
+    			((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().decrementIORBCount();
+    			
+    			/*Se a flag é verdadeira e o contado é zero, deve-se fechar algum arquivo pendente*/
+    			if ((((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().closePending) &&
+    			(((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().getIORBCount() == 0))
+    			{
+    				((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().close();
+    				
+    			}
+    		}
+    	}  	
 
     }
 
