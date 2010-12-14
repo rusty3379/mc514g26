@@ -42,8 +42,65 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     */
     public void do_handleInterrupt()
     {
-        // your code goes here
+    	MyOut.print("handle", " >>>>>>>> handle");
+    	/* Evento iorb que gerou a interrupcao*/
+    	IORB iorb = (IORB)InterruptVector.getEvent();
+    	/*Decrementando contador*/
+    	iorb.getOpenFile().decrementIORBCount();
+    	
+    	/*Caso o arquivo não ira mais ser utilizado*/
+		if ((iorb.getOpenFile().closePending) &&
+    			(iorb.getOpenFile().getIORBCount() == 0))
+    	{
+    				iorb.getOpenFile().close();
+    				
+    	}
 
+		/*liberando a pagina*/
+		iorb.getPage().unlock();
+		
+		/*Caso a Task esta viva*/
+		if(iorb.getThread().getTask().getStatus() == TaskLive){
+			/*E nao esta realizando swap-in e nem swap-out*/
+			if(iorb.getDeviceID() != SwapDeviceID){
+				/*marcar referencia*/
+				iorb.getPage().getFrame().setReferenced(true);
+				/*se leitura marcar como dirty*/
+				if(iorb.getIOType()==FileRead){
+					iorb.getPage().getFrame().setDirty(true);
+				}
+			}
+			/*Se esta realizando swap marcar dirty como falso*/
+			else{
+				iorb.getPage().getFrame().setDirty(false);
+			}
+		}
+		
+		/*Caso o frame reservado seja igual a task*/
+		if(iorb.getThread().getTask().getStatus() == TaskTerm){
+			if(iorb.getPage().getFrame().getReserved().getID() == iorb.getThread().getTask().getID()){
+				/*marcar como não reservada a task*/
+				iorb.getPage().getFrame().setUnreserved(iorb.getThread().getTask());
+			}
+			
+		}
+		
+		/*notificar as Threads*/
+		iorb.notifyThreads();
+		
+		/*liberar device*/
+		Device.get(iorb.getDeviceID()).setBusy(false);
+		
+		/*retirar um iorb da fila*/
+		IORB dequeue = Device.get(iorb.getDeviceID()).dequeueIORB();
+		
+		/*Se nao for nulo iniciar outro I/O*/
+		if(dequeue != null){
+			Device.get(iorb.getDeviceID()).startIO(dequeue);			
+		}
+		
+		ThreadCB.dispatch();		
+		
     }
 
 

@@ -36,7 +36,7 @@ public class Device extends IflDevice
     */
     public Device(int id, int numberOfBlocks)
     {
-        // your code goes here
+       
     	super(id,numberOfBlocks);
 
     }
@@ -73,9 +73,11 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
+    	MyOut.print(iorb, " >>>>>>>> enqueue");
     	/*block size*/
     	int blockSize = (int) (java.lang.Math.pow(2,(MMU.getVirtualAddressBits() - MMU.getPageAddressBits())));
 
+    	//Device.get(iorb.getDeviceID())
     	
     	/*Numero de setores por bloco*/
     	int numSectorBlock = blockSize/((Disk) this).getBytesPerSector();
@@ -122,7 +124,7 @@ public class Device extends IflDevice
     */
     public IORB do_dequeueIORB()
     {
-			
+    	MyOut.print("iorb", " >>>>>>>> dequeue");	
 			return  (IORB) iorbQueue.removeHead();		
 	
 
@@ -144,7 +146,7 @@ public class Device extends IflDevice
     public void do_cancelPendingIO(ThreadCB thread)
     {
     	IORB iorb;
-    	
+    	MyOut.print(thread, " >>>>>>>> cancel");	
     	while(iorbQueue.forwardIterator().hasMoreElements()){
     		
     		 iorb = ((IORB) iorbQueue.forwardIterator().nextElement());
