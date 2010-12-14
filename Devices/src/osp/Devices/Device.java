@@ -107,13 +107,8 @@ public class Device extends IflDevice
     */
     public IORB do_dequeueIORB()
     {
-    	
-    	
-//		if(!(iorbQueue.isEmpty())){
-			
 			
 			return  (IORB) iorbQueue.removeHead();		
-		
 	
 
     }
@@ -133,20 +128,20 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-    	
+    	IORB iorb = ((IORB) iorbQueue.forwardIterator().nextElement());
     	
     	while(iorbQueue.forwardIterator().hasMoreElements()){
-    		if (((IORB) iorbQueue.forwardIterator().nextElement()).getThread() == thread){
+    		if (iorb.getThread() == thread){
     			/*liberar o buffer*/
-    			((IORB) iorbQueue.forwardIterator().nextElement()).getPage().unlock();
+    			iorb.getPage().unlock();
     			/*Decrementar o contador*/
-    			((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().decrementIORBCount();
+    			iorb.getOpenFile().decrementIORBCount();
     			
     			/*Se a flag é verdadeira e o contado é zero, deve-se fechar algum arquivo pendente*/
-    			if ((((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().closePending) &&
-    			(((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().getIORBCount() == 0))
+    			if ((iorb.getOpenFile().closePending) &&
+    			(iorb.getOpenFile().getIORBCount() == 0))
     			{
-    				((IORB) iorbQueue.forwardIterator().nextElement()).getOpenFile().close();
+    				iorb.getOpenFile().close();
     				
     			}
     		}
