@@ -16,6 +16,8 @@ import osp.Memory.*;
 import osp.FileSys.*;
 import osp.Tasks.*;
 import java.util.*;
+import java.lang.Math;
+
 
 public class Device extends IflDevice
 {
@@ -71,7 +73,20 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
-    	//int memoryPage = MMU.memoryAddress >>> (MMU.getVirtualAddressBits() - MMU.getPageAddressBits());
+    	/*block size*/
+    	int blockSize = (int) (java.lang.Math.pow(2,(MMU.getVirtualAddressBits() - MMU.getPageAddressBits())));
+
+    	
+    	/*Numero de setores por bloco*/
+    	int numSectorBlock = blockSize/((Disk) this).getBytesPerSector();
+    	
+    	/*numero de blocos na track*/
+    	int numBlockTrack = ((Disk) this).getSectorsPerTrack()/numSectorBlock;
+    	
+    	
+    	/*Cilindro é o bloco dado pelo numero de blocos por track pelo numero de cilindros*/
+    	int cylinder = (iorb.getBlockNumber()/numBlockTrack)/((Disk) this).getPlatters();
+    	
     	
     	
     	iorb.getPage().lock(iorb);/*lock the page associated with the iorb*/
@@ -79,7 +94,7 @@ public class Device extends IflDevice
     	/*increment the IORB count of the open-file handle associated with iorb.*/
     	iorb.getOpenFile().incrementIORBCount();
     	
-    	iorb.setCylinder(iorb.getBlockNumber());/*Not sure*/
+    	iorb.setCylinder(cylinder);/*Not sure*/
     	
     	if (iorb.getThread().getStatus() == ThreadKill){
     		return FAILURE;
@@ -128,10 +143,13 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-    	IORB iorb = ((IORB) iorbQueue.forwardIterator().nextElement());
+    	IORB iorb;
     	
     	while(iorbQueue.forwardIterator().hasMoreElements()){
-    		if (iorb.getThread() == thread){
+    		
+    		 iorb = ((IORB) iorbQueue.forwardIterator().nextElement());
+    		 
+    		if (iorb.getThread().getID() == thread.getID()){
     			/*liberar o buffer*/
     			iorb.getPage().unlock();
     			/*Decrementar o contador*/
